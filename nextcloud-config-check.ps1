@@ -32,8 +32,7 @@ Function Update-SelfIfNeeded {
         [string]$scriptInstallPath
     )
     # Só baixa nova versão se este script estiver no local certo
-    if ($MyInvocation.MyCommand.Path -ne $scriptInstallPath) {
-        # Copia para local correto e relança
+    if ($MyInvocation.MyCommand.Path -and ($MyInvocation.MyCommand.Path -ne $scriptInstallPath)) {
         if (-not (Test-Path (Split-Path $scriptInstallPath))) {
             New-Item -ItemType Directory -Path (Split-Path $scriptInstallPath) | Out-Null
         }
