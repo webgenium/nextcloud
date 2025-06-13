@@ -1,5 +1,5 @@
 # =================== RELEASE =====================
-$release = "20240613-01"
+$release = "20240613-02"
 
 # =================== CONFIGURAÇÕES =====================
 
@@ -120,9 +120,15 @@ for ($i = 0; $i -lt $lines.Count; $i++) {
         $inSection = $false
     }
     if ($inSection -and $line -match '^clientVersion\s*=') {
-        $clientVersion = ($line -split '=')[1].Trim()
-        break
+    $clientVersionRaw = ($line -split '=')[1].Trim()
+    # Extrai só o número da versão antes do espaço ou parêntese
+    if ($clientVersionRaw -match '^([\d\.]+)') {
+        $clientVersion = $matches[1]
+    } else {
+        $clientVersion = $clientVersionRaw
     }
+    break
+}
 }
 
 if (-not $clientVersion) {
