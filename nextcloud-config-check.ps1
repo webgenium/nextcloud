@@ -1,3 +1,6 @@
+# =================== RELEASE =====================
+$release = "20240613-01"
+
 # =================== CONFIGURAÇÕES =====================
 
 # Versão esperada do Nextcloud Desktop
@@ -24,34 +27,37 @@ $nextcloudOptions = @{
     autoUpdateCheck = "false"
 }
 
-# =================== AUTOATUALIZAÇÃO =====================
+# =================== AUTOATUALIZAÇÃO (USANDO RELEASE) =====================
 
 Function Update-SelfIfNeeded {
     param (
         [string]$selfUrl,
         [string]$scriptInstallPath
     )
-    # Só baixa nova versão se este script estiver no local certo
-    if ($MyInvocation.MyCommand.Path -and ($MyInvocation.MyCommand.Path -ne $scriptInstallPath)) {
-        if (-not (Test-Path (Split-Path $scriptInstallPath))) {
-            New-Item -ItemType Directory -Path (Split-Path $scriptInstallPath) | Out-Null
+    # Carrega release local
+    $localRelease = $null
+    $localContent = Get-Content $scriptInstallPath
+    foreach ($line in $localContent) {
+        if ($line -match '^\$release\s*=\s*"([^"]+)"') {
+            $localRelease = $matches[1]
+            break
         }
-        Copy-Item $MyInvocation.MyCommand.Path $scriptInstallPath -Force
-        Write-Host "Script copiado para $scriptInstallPath. Reiniciando..."
-        Start-Process -FilePath "powershell.exe" -ArgumentList "-ExecutionPolicy Bypass -File `"$scriptInstallPath`"" -Wait
-        exit
     }
-
-    # Faz download do script publicado no GitHub
+    # Baixa release remoto
     try {
         $remote = Invoke-WebRequest -Uri $selfUrl -UseBasicParsing -ErrorAction Stop
-        $remoteContent = $remote.Content -replace "`r`n", "`n"
-        $localContent = (Get-Content $scriptInstallPath -Raw) -replace "`r`n", "`n"
-        if ($remoteContent -ne $localContent) {
-            # Substitui por nova versão e executa
+        $remoteRelease = $null
+        foreach ($line in $remote.Content -split "`n") {
+            if ($line -match '^\$release\s*=\s*"([^"]+)"') {
+                $remoteRelease = $matches[1]
+                break
+            }
+        }
+        if ($localRelease -and $remoteRelease -and ($localRelease -ne $remoteRelease)) {
+            # Atualiza o script
             $tmpNew = "$env:TEMP\nextcloud-config-check.ps1"
-            Set-Content -Path $tmpNew -Value $remoteContent
-            Write-Host "Nova versão encontrada. Atualizando e executando..."
+            Set-Content -Path $tmpNew -Value $remote.Content -Encoding utf8
+            Write-Host "Nova versão do script ($remoteRelease) encontrada. Atualizando e executando..."
             Copy-Item $tmpNew $scriptInstallPath -Force
             Start-Process -FilePath "powershell.exe" -ArgumentList "-ExecutionPolicy Bypass -File `"$scriptInstallPath`"" -Wait
             exit
